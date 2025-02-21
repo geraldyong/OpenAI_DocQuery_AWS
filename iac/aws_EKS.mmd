@@ -1,0 +1,82 @@
+flowchart TB
+    %% Client and Edge Services
+    Client((Client))
+    
+    %% CloudFront and WAF
+    CF[CloudFront Distribution]
+    WAF[WAF ACL]
+    
+    %% VPC Components
+    subgraph VPC[VPC 10.0.0.0/16]
+        IGW[Internet Gateway]
+        
+        subgraph Public_Subnets[Public Subnets]
+            PublicA[Public Subnet A<br/>10.0.1.0/24]
+            PublicB[Public Subnet B<br/>10.0.3.0/24]
+            ALB[Application Load Balancer]
+            ALB_SG[ALB Security Group]
+        end
+        
+        subgraph Private_Subnets[Private Subnets]
+            PrivateA[Private Subnet A<br/>10.0.2.0/24]
+            PrivateB[Private Subnet B<br/>10.0.4.0/24]
+            NAT[NAT Gateway]
+        end
+        
+        EKS[EKS Cluster]
+        NodeGroup[EKS Node Group]
+    end
+    
+    %% Monitoring and Logging
+    subgraph Logging[Logging Infrastructure]
+        CF_Logs[(CloudFront<br/>S3 Logs)]
+        WAF_Logs[(WAF<br/>S3 Logs)]
+        Kinesis[Kinesis Stream]
+        Firehose[Kinesis Firehose]
+    end
+    
+    %% Configuration and Secrets
+    subgraph Config[Configuration]
+        Secrets[Secrets Manager<br/>OpenAI Keys]
+        SSM[Parameter Store<br/>Environment Vars]
+    end
+    
+    %% Connection definitions
+    Client --> CF
+    CF --> WAF
+    WAF --> CF
+    CF --> IGW
+    IGW --> ALB
+    ALB --> ALB_SG
+    ALB_SG --> EKS
+    
+    %% Internal network flow
+    PublicA & PublicB --> NAT
+    NAT --> PrivateA & PrivateB
+    PrivateA & PrivateB --> NodeGroup
+    
+    %% EKS connections
+    EKS --> NodeGroup
+    
+    %% Logging connections
+    CF --> CF_Logs
+    CF --> Kinesis
+    WAF --> Firehose
+    Firehose --> WAF_Logs
+    
+    %% Config connections
+    EKS --> Secrets
+    EKS --> SSM
+
+    %% Styling
+    classDef aws fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:white
+    class IGW,CF,WAF,ALB,EKS,NAT,Kinesis,Firehose,Secrets,SSM aws
+    
+    classDef subnet fill:#F58536,stroke:#232F3E,stroke-width:1px,color:white
+    class PublicA,PublicB,PrivateA,PrivateB subnet
+    
+    classDef storage fill:#7AA116,stroke:#232F3E,stroke-width:2px,color:white
+    class CF_Logs,WAF_Logs storage
+    
+    classDef vpc fill:#FF9900,stroke:#232F3E,stroke-width:4px,color:white,stroke-dasharray: 5 5
+    class VPC vpc

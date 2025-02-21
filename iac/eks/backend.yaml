@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: doc-backend
+  namespace: doc-query
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: doc-backend
+  template:
+    metadata:
+      labels:
+        app: doc-backend
+    spec:
+      containers:
+      - name: doc-backend
+        image: 850071827025.dkr.ecr.us-east-1.amazonaws.com/doc-query/backend:latest
+        ports:
+        - containerPort: 8003
+        env:
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: openai-keys
+              key: OPENAI_API_KEY
+        - name: OPENAI_ORGANIZATION_ID
+          valueFrom:
+            secretKeyRef:
+              name: openai-keys
+              key: OPENAI_ORGANIZATION_ID
+        - name: VECTOR_DB
+          valueFrom:
+            configMapKeyRef:
+              name: backend-config
+              key: VECTOR_DB
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: backend-config
+              key: REDIS_HOST
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: backend-config
+              key: REDIS_PORT
+        command: ["/bin/sh"]
+        args: ["-c", "uvicorn doc-query_ms:app --host 0.0.0.0 --port 8003 --reload"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: doc-backend
+  namespace: doc-query
+spec:
+  selector:
+    app: doc-backend
+  ports:
+  - protocol: TCP
+    port: 8003
+    targetPort: 8003

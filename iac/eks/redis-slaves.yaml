@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: doc-redis-slave
+  namespace: doc-query
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: doc-redis
+      role: slave
+  template:
+    metadata:
+      labels:
+        app: doc-redis
+        role: slave
+    spec:
+      containers:
+      - name: doc-redis-slave
+        image: redis/redis-stack-server:latest
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        command: ["redis-server", "--replicaof", "doc-redis-master", "6379", "--slave-read-only", "no"]
+      volumes:
+      - name: redis-data
+        emptyDir: {}   # For production, consider a PersistentVolumeClaim

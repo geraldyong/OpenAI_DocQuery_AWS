@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: doc-redis
+  namespace: doc-query
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: doc-redis
+  template:
+    metadata:
+      labels:
+        app: doc-redis
+    spec:
+      containers:
+      - name: doc-redis
+        image: redis/redis-stack-server:latest
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+      volumes:
+      - name: redis-data
+        emptyDir: {}   # For production, consider a PersistentVolumeClaim
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: doc-redis
+  namespace: doc-query
+spec:
+  selector:
+    app: doc-redis
+  ports:
+  - protocol: TCP
+    port: 6379
+    targetPort: 6379

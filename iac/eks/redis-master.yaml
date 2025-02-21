@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: doc-redis-master
+  namespace: doc-query
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: doc-redis-master
+      app: doc-redis
+      role: master
+  template:
+    metadata:
+      labels:
+        app: doc-redis-master
+        app: doc-redis
+        role: master
+    spec:
+      containers:
+      - name: doc-redis-master
+        image: redis/redis-stack-server:latest
+        ports:
+        - containerPort: 6379
+        #healthcheck:
+        #  test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+        #  interval: 300s
+        #  timeout: 5s
+        #  retries: 3
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+      volumes:
+      - name: redis-data
+        emptyDir: {}   # For production, consider a PersistentVolumeClaim
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: doc-redis
+  namespace: doc-query
+spec:
+  selector:
+    app: doc-redis-master
+  ports:
+  - protocol: TCP
+    port: 6379
+    targetPort: 6379

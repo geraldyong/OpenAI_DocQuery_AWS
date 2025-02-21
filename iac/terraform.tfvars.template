@@ -1,0 +1,5 @@
+aws_region = "us-east-1"
+account_id = ""
+laptop_ip  = "1.2.3.4/32"
+openai_api_key = ""
+openai_org_id = ""

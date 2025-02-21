@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: doc-frontend-ingress
+  namespace: doc-query
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/group.name: doc-query
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    alb.ingress.kubernetes.io/healthcheck-path: "/_stcore/health"  # Streamlit health check path
+    alb.ingress.kubernetes.io/healthcheck-port: "3003"
+    alb.ingress.kubernetes.io/success-codes: "200-399"  # Streamlit may return various 2XX/3XX codes
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: doc-frontend
+                port:
+                  number: 80
