@@ -8,7 +8,6 @@ frontend/certs/geraldyong-*.pem
 backend/__pycache__
 backend/uploaded_files/*
 docs_archived
-rebuild.sh
 prompts/*
 iac/AppRunner
 iac/error.txt
