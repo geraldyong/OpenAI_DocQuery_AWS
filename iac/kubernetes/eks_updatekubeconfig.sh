@@ -1,8 +1,9 @@
 #!/bin/bash
 
+# This script is only required if the kubeconfig needs to be manually updated.
 AWS_PROFILE=acloudguru
-AWS_ACCOUNT=`cat terraform.tfvars | egrep "^account_id" | cut -f2 -d'"'`
-AWS_REGION=`cat terraform.tfvars | egrep "^aws_region" | cut -f2 -d'"'`
+AWS_ACCOUNT=`cat ../terraform.tfvars | egrep "^account_id" | cut -f2 -d'"'`
+AWS_REGION=`cat ../terraform.tfvars | egrep "^aws_region" | cut -f2 -d'"'`
 TARGET_ECR=${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com
 
 # Check for clusters.

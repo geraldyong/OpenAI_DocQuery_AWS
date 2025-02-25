@@ -20,26 +20,34 @@ else
 fi
 
 # Add EKS Helm Charts
-echo "INFO: Updating EKS Helm Charts
+echo "INFO: Updating EKS Helm Charts"
 helm repo add eks https://aws.github.io/eks-charts
+helm repo add external-secrets https://charts.external-secrets.io
 helm repo update
-kubectl apply -f albc-serviceaccount.yaml
+
+# Install resource for secrets.
+helm install external-secrets external-secrets/external-secrets \
+  -n external-secrets --create-namespace
+
+#kubectl apply -f albc-serviceaccount.yaml
 helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
   -n kube-system \
   --set clusterName=eks-apps-cluster \
   --set serviceAccount.create=false \
   --set serviceAccount.name=aws-load-balancer-controller \
   --set region=${AWS_REGION} \
-  --set vpcId=${VPC_ID} \ 
-  --set podDisruptionBudget.maxUnavailable=1 \
-  --set enableServiceMutatorWebhook=false \
-  --set enableEndpointSlices=true \
-  --set serviceAnnotations."meta\.helm\.sh/release-name"=aws-load-balancer-controller \
-  --set serviceAnnotations."meta\.helm\.sh/release-namespace"=kube-system
+  --set vpcId=${VPC_ID} 
+  #\
+  #--set podDisruptionBudget.maxUnavailable=1 \
+  #--set enableServiceMutatorWebhook=false \
+  #--set enableEndpointSlices=true \
+  #--set serviceAnnotations."meta\.helm\.sh/release-name"=aws-load-balancer-controller \
+  #--set serviceAnnotations."meta\.helm\.sh/release-namespace"=kube-system
 
 echo "INFO: Creating Kubernetes resources"
-kubectl apply -f namespace.yaml
-kubectl apply -f albc-ingress.yaml
+#kubectl apply -f namespace.yaml
+#kubectl apply -f albc-ingress.yaml
+kubectl apply -f external-secrets.yaml
 kubectl apply -f redis.yaml
 #kubectl apply -f redis-master.yaml
 #kubectl apply -f redis-slaves.yaml

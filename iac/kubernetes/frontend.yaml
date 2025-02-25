@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: doc-frontend
-        image: 850071827025.dkr.ecr.us-east-1.amazonaws.com/doc-query/frontend
+        image: 905418180243.dkr.ecr.us-east-1.amazonaws.com/doc-query/frontend
         ports:
         - containerPort: 3003
         env:
@@ -31,21 +31,21 @@ spec:
               key: BACKEND_PORT
         command: ["/bin/sh"]
         args: ["-c", "streamlit run doc-query_ui.py --server.port 3003 && wait"]
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: doc-frontend
-  namespace: doc-query
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: "external"
-    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
-    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
-spec:
-  selector:
-    app: doc-frontend
-  ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 3003
-  type: NodePort
+#---
+#apiVersion: v1
+#kind: Service
+#metadata:
+#  name: doc-frontend
+#  namespace: doc-query
+#  annotations:
+#    service.beta.kubernetes.io/aws-load-balancer-type: "external"
+#    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+#    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+#spec:
+#  selector:
+#    app: doc-frontend
+#  ports:
+#  - protocol: TCP
+#    port: 3003
+#    targetPort: 3003
+#  type: NodePort
