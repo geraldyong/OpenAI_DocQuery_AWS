@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: doc-frontend-portfwd
+  namespace: doc-query
+spec:
+  selector:
+    app: doc-frontend
+  ports:
+  - protocol: TCP
+    port: 3003
+    targetPort: 3003
+  type: ClusterIP

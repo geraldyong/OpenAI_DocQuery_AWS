@@ -3,7 +3,9 @@
 # Clear Terraform State.
 cleanup() {
   # Use this only when your cloud account is no longer available, otherwise use terraform destroy.
+  echo "------------------------------"
   echo "INFO: Clearing Terraform state"
+  echo "------------------------------"
   terraform state list | while read i; do terraform state rm $i; done
   # Clear out backups.
   rm -f terraform.tfstate.*
@@ -11,7 +13,9 @@ cleanup() {
 
 # Destroy existing resources if the cloud account is still active.
 destroy() {
+  echo "------------------------------"
   echo "INFO: Destroying all resources"
+  echo "------------------------------"
   terraform init
   terraform plan
   terraform destroy -auto-approve
@@ -19,7 +23,9 @@ destroy() {
 
 # Build Terraform.
 setup() {
+  echo "-------------------------------------"
   echo "INFO: Setting up cloud infrastructure"
+  echo "-------------------------------------"
   terraform init
   terraform plan
   terraform apply -auto-approve
@@ -34,6 +40,7 @@ _menu_troubleshoot() {
   local AWS_REGION=`cat terraform.tfvars | egrep "^aws_region" | cut -f2 -d'"'`
   local ACCOUNT_ID=`cat terraform.tfvars | egrep "^account_id" | cut -f2 -d'"'`
   local LAPTOP_IP=`cat terraform.tfvars | egrep "^laptop_ip" | cut -f2 -d'"'`
+  local NAMESPACE=`cat terraform.tfvars | egrep "^k8s_namespace" | cut -f2 -d'"'`
   export AWS_PROFILE AWS_REGION LAPTOP_IP ACCOUNT_ID
 
   while [ "${menuOpt}" != "x" ]; do
@@ -43,74 +50,131 @@ _menu_troubleshoot() {
     echo "  Troubleshooting Menu"
     echo "=========================="
     echo
-    echo "1) WAFv2 Get IP Set"
-    echo "2) WAFv2 Get ACL"
-    echo "3) Cloudfront Distributions"
-    echo "4) Kubernetes frontend logs"
-    echo "5) VPC Flow logs"
-    echo "6) Cloudfront S3 Logs"
-    echo "x) Return"
+    echo "  1) Kubernetes frontend logs"
+    echo "  2) Kubernetes ALB logs"
+    echo "  3) Cloudfront and WAF S3 Logs"
+    echo "  4) Cloudfront Distributions"
+    echo "  5) WAFv2 Get IP Set"
+    echo "  6) WAFv2 Get ACL"
+    echo "  7) VPC Flow logs"
+    echo "  8) Show Target Groups and Target Group Health"
+    echo "  9) Port Forward Frontend Service"
+    echo "  x) Return"
     echo
     echo "Please select an option:"
     read menuOpt
     echo
 
     case "${menuOpt}" in
-      1)  echo "------------------"
-          echo "INFO: WAFv2 IP Set"
-          echo "------------------"
+      1)  echo "----------------------------------"
+          echo "INFO: Getting Kubernetes Resources"
+          echo "----------------------------------"
+          kubectl get all -n ${NAMESPACE}
+          echo
+          echo "---------------------------------"
+          echo "INFO: Getting Kubernetes POD logs"
+          echo "---------------------------------"
+          kubectl logs -n ${NAMESPACE} -l app=doc-frontend
+          echo
+          echo "-------------------------------------------"
+          echo "INFO: Getting Kubernetes Service event logs"
+          echo "-------------------------------------------"
+          kubectl describe service doc-frontend-service -n ${NAMESPACE}
+          ;;
+      2)  echo "-----------------------------------------"
+          echo "INFO: Getting Kubernetes ALB Webhook logs"
+          echo "-----------------------------------------"
+          kubectl logs service/aws-load-balancer-webhook-service -n kube-system
+          echo
+          echo "-------------------------------------------------------"
+          echo "INFO: Getting Kubernetes ALB Controller Deployment logs"
+          echo "-------------------------------------------------------"
+          kubectl describe deployment.apps/aws-load-balancer-controller -n kube-system
+          echo
+          echo "-------------------------------------"
+          echo "INFO: Getting Kubernetes ALB Pod logs"
+          echo "-------------------------------------"
+          kubectl logs deployment.apps/aws-load-balancer-controller -n kube-system | grep error
+          ;;
+      3)  echo "---------------------------------------------------"
+          echo "INFO: Checking CloudFront S3 Logs for Laptop access"
+          echo "---------------------------------------------------"
+          aws s3 ls s3://${NAMESPACE}-cloudfront-logs-${ACCOUNT_ID}/cloudfront-logs/ | awk '{ print $4 }' | while read i; do
+            aws s3 cp s3://${NAMESPACE}-cloudfront-logs-${ACCOUNT_ID}/cloudfront-logs/$i .
+            gunzip $i
+            head -2 ${i::${#i}-3}
+            egrep "${LAPTOP_IP}|Error" ${i::${#i}-3}
+            rm ${i::${#i}-3}
+          done
+          echo
+          echo "--------------------------------------------"
+          echo "INFO: Checking WAF S3 Logs for Laptop access"
+          echo "--------------------------------------------"
+          aws s3 ls s3://${NAMESPACE}-waf-logs-${ACCOUNT_ID} --recursive | awk '{ print $4 }' | while read i; do
+            local LOGFILE=`echo $i | sed "s/.*\///g"`
+            aws s3 cp s3://${NAMESPACE}-waf-logs-${ACCOUNT_ID}/$i ${LOGFILE}
+            egrep "Laptop|Error" ${LOGFILE}
+            rm ${LOGFILE}
+          done
+          echo
+          echo "--------------------------------------------"
+          echo "INFO: Checking NLB S3 Logs for Laptop access"
+          echo "--------------------------------------------"
+          aws s3 ls s3://${NAMESPACE}-nlb-logs-${ACCOUNT_ID}/nlb-logs/AWSLogs/${ACCOUNT_ID}/0/ | awk '{ print $4 }' | while read i; do
+            aws s3 cp s3://${NAMESPACE}-nlb-logs-${ACCOUNT_ID}/nlb-logs/AWSLogs/${ACCOUNT_ID}/0/$i .
+            gunzip $i
+            head -2 ${i::${#i}-3}
+            egrep "${LAPTOP_IP}|Error" ${i::${#i}-3}
+            rm ${i::${#i}-3}
+          done
+          ;;
+      4)  echo "------------------------------------------"
+          echo "INFO: Getting Cloudfront Distribution Info"
+          echo "------------------------------------------"
+          aws cloudfront list-distributions --region=${AWS_REGION}
+          ;;
+      5)  echo "--------------------------"
+          echo "INFO: Getting WAFv2 IP Set"
+          echo "--------------------------"
           local IPSET=`aws wafv2 list-ip-sets --scope=CLOUDFRONT --region=${AWS_REGION} | egrep "\"Name\":|\"Id\":"`
           local IPSET_NAME=`echo ${IPSET} | cut -f4 -d'"'`
           local IPSET_ID=`echo ${IPSET} | cut -f8 -d'"'`
-          aws wafv2 get-ip-set --name ${IPSET_NAME} --id ${IPSET_ID} --scope=CLOUDFRONT --region=us-east-1
+          aws wafv2 get-ip-set --name ${IPSET_NAME} --id ${IPSET_ID} --scope=CLOUDFRONT --region=${AWS_REGION}
           ;;
-      2)  echo "---------------"
-          echo "INFO: WAFv2 ACL"
-          echo "---------------"
+      6)  echo "-----------------------"
+          echo "INFO: Getting WAFv2 ACL"
+          echo "-----------------------"
           local ACL=`aws wafv2 list-web-acls --scope=CLOUDFRONT --region=${AWS_REGION} | egrep "\"Name\":|\"Id\":"`
           local ACL_NAME=`echo ${ACL} | cut -f4 -d'"'`
           local ACL_ID=`echo ${ACL} | cut -f8 -d'"'`
-          aws wafv2 get-web-acl --name ${ACL_NAME} --id ${ACL_ID} --scope=CLOUDFRONT --region=us-east-1
+          aws wafv2 get-web-acl --name ${ACL_NAME} --id ${ACL_ID} --scope=CLOUDFRONT --region=${AWS_REGION}
           ;;
-      3)  echo "----------------------------------"
-          echo "INFO: Cloudfront Distribution Info"
-          echo "----------------------------------"
-          aws cloudfront list-distributions --region=us-east-1
-          ;;
-      4)  echo "-------------------------"
-          echo "INFO: Kubernetes POD logs"
-          echo "-------------------------"
-          kubectl logs -n doc-query -l app=doc-frontend
-          echo
-          echo "--------------------------------------------"
-          echo "INFO: Kubernetes ALB Controller Service logs"
-          echo "--------------------------------------------"
-          kubectl describe service aws-load-balancer-webhook-service -n kube-system
-          echo
-          echo "------------------------------"
-          echo "INFO: Kubernetes Service logs"
-          echo "------------------------------"
-          kubectl describe service doc-frontend-service -n doc-query
-          ;;
-      5)  echo "-------------------"
-          echo "INFO: VPC Flow logs"
-          echo "-------------------"
+      7)  echo "----------------------------"
+          echo "INFO: Checking VPC Flow logs"
+          echo "----------------------------"
           aws logs start-query \
             --log-group-name "/aws/vpc/flow-logs" \
             --start-time $(date -v-1H +%s) \
             --end-time $(date +%s) \
             --query-string "fields @timestamp, srcAddr, dstAddr, srcPort, dstPort, action | filter srcAddr = '${LAPTOP_IP}'"
           ;;
-      6)  echo "---------------------------------------------------"
-          echo "INFO: Checking CloudFront S3 Logs for Laptop access"
-          echo "---------------------------------------------------"
-          aws s3 ls s3://doc-query-cloudfront-logs-${ACCOUNT_ID}/cloudfront-logs/ | cut -f2 -d',' | while read i; do
-            aws s3 cp s3://doc-query-cloudfront-logs-${ACCOUNT_ID}/cloudfront-logs/$i .
-            gunzip $i
-            rm $i
-            egrep "${LAPTOP_IP}" ${i:0:-3}
-            rm ${i:0:-3}
-          done
+      8)  echo "-------------------------------"
+          echo "INFO: Getting ELB Target Groups"
+          echo "-------------------------------"
+          aws elbv2 describe-target-groups
+          echo
+          echo "-------------------------------"
+          echo "INFO: Getting ELB Target Health"
+          echo "-------------------------------"
+          local TG=`aws elbv2 describe-target-groups | grep "TargetGroupArn" | cut -f4 -d'"'`
+          aws elbv2 describe-target-health --target-group-arn ${TG}
+          ;;
+      9)  echo "-------------------------------"
+          echo "INFO: Creating Port Fwd Service"
+          echo "-------------------------------"
+          kubectl apply -f kubernetes/frontend-portfwd.yaml
+          kubectl port-forward svc/doc-frontend-portfwd 3003:3003 -n ${NAMESPACE}
+          kubectl delete svc/doc-frontend-portfwd -n ${NAMESPACE}
           ;;
       [eExXrRqQ]) echo "Returning to main menu."
           return;;
@@ -136,13 +200,13 @@ menu_show() {
     echo
     echo "AWS Account ID (from terraform.tfvars): "`cat terraform.tfvars | grep account_id | cut -f2 -d'"'`
     echo
-    echo "1) Destroy existing AWS setup (only if the account is still active)"
-    echo "2) Cleanup (if the account has been wiped but state is not cleared)"
-    echo "3) Setup and Deploy"
-    echo "4) Setup ECR and Build Images"
-    echo "5) Setup EKS Services"
-    echo "6) Troubleshooting"
-    echo "x) Exit"
+    echo "  1) Terraform Destroy existing AWS setup (only if the account is still active)"
+    echo "  2) Terraform Wipe Clean State File (if the account has been wiped but state is not cleared)"
+    echo "  3) Terraform Setup and Deploy"
+    echo "  4) Rebuild Images and Push to ECR"
+    echo "  5) Deploy Kubernetes Resources on EKS"
+    echo "  6) Troubleshooting"
+    echo "  x) Exit"
     echo
     echo "Please select an option:"
     read menuOpt
@@ -154,7 +218,7 @@ menu_show() {
       3)  setup ;;
       4)  cd kubernetes
           ./eks_updatekubeconfig.sh
-          cd ../ecr
+          cd ..
           ./ecr_login.sh
           cd ..;;
       5)  cd kubernetes; 
@@ -172,7 +236,6 @@ menu_show() {
     read tmp
   done
 }
-
 
 # Main Program.
 menu_show

@@ -4,7 +4,7 @@
 
 # IAM Role for the EKS Cluster
 resource "aws_iam_role" "eks_cluster_role" {
-  name = "eks_cluster_role"
+  name               = "eks_cluster_role"
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -24,7 +24,7 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
 
 # IAM Role for the EKS Node Group
 resource "aws_iam_role" "eks_node_role" {
-  name = "eks_node_role"
+  name               = "eks_node_role"
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -58,9 +58,9 @@ resource "aws_eks_cluster" "eks_cluster" {
   role_arn = aws_iam_role.eks_cluster_role.arn
   version  = "1.32"
   vpc_config {
-    subnet_ids              = [
-      aws_subnet.eks_public_subnet_a.id, 
-      aws_subnet.eks_public_subnet_b.id, 
+    subnet_ids = [
+      aws_subnet.eks_public_subnet_a.id,
+      aws_subnet.eks_public_subnet_b.id,
       aws_subnet.eks_private_subnet_a.id,
       aws_subnet.eks_private_subnet_b.id
     ]
@@ -86,7 +86,7 @@ resource "aws_eks_node_group" "eks_node_group" {
   cluster_name    = aws_eks_cluster.eks_cluster.name
   node_group_name = "eks-node-group"
   node_role_arn   = aws_iam_role.eks_node_role.arn
-  subnet_ids      = [
+  subnet_ids = [
     aws_subnet.eks_private_subnet_a.id,
     aws_subnet.eks_private_subnet_b.id
   ]
@@ -119,14 +119,14 @@ resource "kubernetes_namespace" "doc_query" {
     aws_eks_cluster.eks_cluster,
     aws_eks_node_group.eks_node_group
   ]
-  
+
   metadata {
-    name = "doc-query"
-    
+    name = var.k8s_namespace
+
     # Optional: Add labels
     labels = {
       environment = "production"
-      app         = "doc-query"
+      app         = var.k8s_namespace
     }
 
     # Optional: Add annotations
@@ -135,14 +135,15 @@ resource "kubernetes_namespace" "doc_query" {
     }
   }
 
+
   # Build the docker images.
   provisioner "local-exec" {
-    command = "cd ecr; ecr_login.sh; cd .."
+    command = "echo 'INFO: Building docker images for ECR' && cd ecr && ./ecr_login.sh && cd .."
   }
 
   # Set up Statefulsets.
   provisioner "local-exec" {
-    command = "cd kubernetes; install.sh; cd .."
+    command = "echo 'INFO: Setting up Kubernetes resources' && cd kubernetes && ./install.sh && cd .."
   }
 }
 
@@ -153,7 +154,7 @@ resource "kubernetes_service_account" "frontend_service" {
 
   metadata {
     name      = "doc-frontend-service"
-    namespace = "doc-query"
+    namespace = var.k8s_namespace
     annotations = {
       "eks.amazonaws.com/role-arn" = aws_iam_role.aws_load_balancer_controller.arn
     }
@@ -166,21 +167,25 @@ resource "kubernetes_service" "frontend" {
   ]
 
   metadata {
-    name = "doc-frontend-service"
-    namespace = "doc-query"
+    name      = "doc-frontend-service"
+    namespace = var.k8s_namespace
     annotations = {
-      "service.beta.kubernetes.io/aws-load-balancer-type" = "external"
-      "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "ip"
-      "service.beta.kubernetes.io/aws-load-balancer-scheme" = "internet-facing"
-      "service.beta.kubernetes.io/aws-load-balancer-target-group-attributes" = "preserve_client_ip.enabled=true"
+      "service.beta.kubernetes.io/aws-load-balancer-type"                        = "external"
+      "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type"             = "ip"
+      "service.beta.kubernetes.io/aws-load-balancer-scheme"                      = "internet-facing"
+      "service.beta.kubernetes.io/aws-load-balancer-target-group-attributes"     = "preserve_client_ip.enabled=true"
+      "service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags"    = "Name=doc-frontend-nlb,ManagedBy=eks"
+      "service.beta.kubernetes.io/aws-load-balancer-access-log-enabled"          = "true"
+      "service.beta.kubernetes.io/aws-load-balancer-access-log-s3-bucket-name"   = aws_s3_bucket.nlb_logs.bucket
+      "service.beta.kubernetes.io/aws-load-balancer-access-log-s3-bucket-prefix" = "nlb-logs"
     }
   }
 
   spec {
     selector = {
-      app = "frontend"
+      app = "doc-frontend"
     }
-    
+
     port {
       port        = 3003
       target_port = 3003
@@ -190,6 +195,15 @@ resource "kubernetes_service" "frontend" {
     type = "LoadBalancer"
   }
 }
+
+# For linking AWS to the Network Load Balancer created on Kubernetes.
+data "aws_lb" "k8s_nlb" {
+  tags = {
+    Name = "doc-frontend-nlb"
+  }
+  depends_on = [kubernetes_service.frontend]
+}
+
 
 #############################
 # OIDC

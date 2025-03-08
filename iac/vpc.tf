@@ -22,9 +22,9 @@ resource "aws_subnet" "eks_public_subnet_a" {
   availability_zone       = "${var.aws_region}a"
 
   tags = {
-    Name                                      = "eks-public-subnet-a"
-    "kubernetes.io/role/elb"                  = "1"
-    "kubernetes.io/cluster/eks-apps-cluster"  = "shared"
+    Name                                     = "eks-public-subnet-a"
+    "kubernetes.io/role/elb"                 = "1"
+    "kubernetes.io/cluster/eks-apps-cluster" = "shared"
   }
 }
 
@@ -32,11 +32,11 @@ resource "aws_subnet" "eks_private_subnet_a" {
   vpc_id            = aws_vpc.eks_vpc.id
   cidr_block        = "10.0.2.0/24"
   availability_zone = "${var.aws_region}a"
-  
+
   tags = {
-    Name                                      = "eks-private-subnet-a"
-    "kubernetes.io/role/internal-elb"         = "1"
-    "kubernetes.io/cluster/eks-apps-cluster"  = "shared"
+    Name                                     = "eks-private-subnet-a"
+    "kubernetes.io/role/internal-elb"        = "1"
+    "kubernetes.io/cluster/eks-apps-cluster" = "shared"
   }
 }
 
@@ -47,9 +47,9 @@ resource "aws_subnet" "eks_public_subnet_b" {
   availability_zone       = "${var.aws_region}b"
 
   tags = {
-    Name                                      = "eks-public-subnet-b"
-    "kubernetes.io/role/elb"                  = "1"
-    "kubernetes.io/cluster/eks-apps-cluster"  = "shared"
+    Name                                     = "eks-public-subnet-b"
+    "kubernetes.io/role/elb"                 = "1"
+    "kubernetes.io/cluster/eks-apps-cluster" = "shared"
   }
 }
 
@@ -57,11 +57,11 @@ resource "aws_subnet" "eks_private_subnet_b" {
   vpc_id            = aws_vpc.eks_vpc.id
   cidr_block        = "10.0.4.0/24"
   availability_zone = "${var.aws_region}a"
-  
+
   tags = {
-    Name                                      = "eks-private-subnet-b"
-    "kubernetes.io/role/internal-elb"         = "1" 
-    "kubernetes.io/cluster/eks-apps-cluster"  = "shared"
+    Name                                     = "eks-private-subnet-b"
+    "kubernetes.io/role/internal-elb"        = "1"
+    "kubernetes.io/cluster/eks-apps-cluster" = "shared"
   }
 }
 
@@ -103,7 +103,7 @@ resource "aws_route_table" "eks_private_rt" {
   vpc_id = aws_vpc.eks_vpc.id
 
   route {
-    cidr_block    = "0.0.0.0/0"
+    cidr_block     = "0.0.0.0/0"
     nat_gateway_id = aws_nat_gateway.eks_nat.id
   }
   tags = {

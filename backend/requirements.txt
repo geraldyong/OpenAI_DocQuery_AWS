@@ -6,7 +6,5 @@ langchain
 langchain_core
 langchain_openai
 langchain_community
-langchain_weaviate
-weaviate-client
 langchain_redis
 redis

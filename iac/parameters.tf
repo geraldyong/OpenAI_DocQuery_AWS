@@ -7,7 +7,7 @@ resource "aws_secretsmanager_secret" "openai_keys" {
 }
 
 resource "aws_secretsmanager_secret_version" "openai_keys_version" {
-  secret_id     = aws_secretsmanager_secret.openai_keys.id
+  secret_id = aws_secretsmanager_secret.openai_keys.id
   secret_string = jsonencode({
     OPENAI_API_KEY         = var.openai_api_key
     OPENAI_ORGANIZATION_ID = var.openai_org_id
@@ -32,16 +32,6 @@ resource "aws_iam_policy" "secrets_access" {
   })
 }
 
-resource "kubernetes_service_account" "frontend_sa" {
-  metadata {
-    name      = "frontend-sa"
-    namespace = kubernetes_namespace.doc_query.metadata[0].name
-    annotations = {
-      "eks.amazonaws.com/role-arn" = aws_iam_role.frontend_role.arn
-    }
-  }
-}
-
 resource "aws_iam_role" "frontend_role" {
   name = "frontend-eks-role"
 
@@ -56,7 +46,7 @@ resource "aws_iam_role" "frontend_role" {
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringEquals = {
-            "${replace(aws_eks_cluster.eks_cluster.identity[0].oidc[0].issuer, "https://", "")}:sub": "system:serviceaccount:${kubernetes_namespace.doc_query.metadata[0].name}:frontend-sa"
+            "${replace(aws_eks_cluster.eks_cluster.identity[0].oidc[0].issuer, "https://", "")}:sub" : "system:serviceaccount:${kubernetes_namespace.doc_query.metadata[0].name}:frontend-sa"
           }
         }
       }
@@ -78,7 +68,7 @@ resource "aws_ssm_parameter" "backend_vector_db" {
   description = "Database type for backend"
   type        = "String"
   value       = "redis"
-  
+
   lifecycle {
     ignore_changes = [value]
   }
@@ -88,9 +78,8 @@ resource "aws_ssm_parameter" "backend_redis_host" {
   name        = "/doc_query/backend/REDIS_HOST"
   description = "Redis host for backend"
   type        = "String"
-  #value       = aws_elasticache_cluster.redis_cluster.cache_nodes[0].address
-  value       = "doc-redis.doc-query.svc.cluster.local"
-  
+  value       = "doc-redis.${var.k8s_namespace}.svc.cluster.local"
+
   lifecycle {
     ignore_changes = [value]
   }
@@ -111,8 +100,8 @@ resource "aws_ssm_parameter" "frontend_backend_host" {
   name        = "/doc_query/frontend/BACKEND_HOST"
   description = "Backend host for frontend"
   type        = "String"
-  value       = "doc-backend.doc-query.svc.cluster.local"
-  
+  value       = "doc-backend.${var.k8s_namespace}.svc.cluster.local"
+
   lifecycle {
     ignore_changes = [value]
   }

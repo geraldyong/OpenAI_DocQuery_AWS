@@ -2,13 +2,6 @@
 # CloudFront and WAF for Frontend Access Control
 #############################
 
-# Get the list of prefix IPs for CloudFront, so that they can be used to
-# define rules in security groups.
-data "aws_ip_ranges" "cloudfront" {
-  services = ["cloudfront"]
-  regions  = [var.aws_region]
-}
-
 # Specify the external IP of the laptop accessing the frontend, so that we
 # can limit all traffic accessing the frontend to this laptop.
 resource "aws_wafv2_ip_set" "laptop_ip_set" {
@@ -20,6 +13,7 @@ resource "aws_wafv2_ip_set" "laptop_ip_set" {
   addresses          = [var.laptop_ip]
 }
 
+# Set up the ACL for WAF.
 resource "aws_wafv2_web_acl" "frontend_acl" {
   provider    = aws.us_east_1
   name        = "frontend-acl"
@@ -60,11 +54,11 @@ resource "aws_cloudfront_distribution" "frontend_cf" {
   default_root_object = "/"
 
   origin {
-    domain_name = aws_lb.frontend_alb.dns_name
-    origin_id   = "alb-frontend-origin"
+    domain_name = data.aws_lb.k8s_nlb.dns_name
+    origin_id   = "nlb-frontend-origin"
 
     custom_origin_config {
-      http_port              = 80
+      http_port              = 3003
       https_port             = 443
       origin_protocol_policy = "http-only"
       origin_ssl_protocols   = ["TLSv1.2"]
@@ -72,18 +66,15 @@ resource "aws_cloudfront_distribution" "frontend_cf" {
   }
 
   default_cache_behavior {
-    target_origin_id        = "alb-frontend-origin"
+    target_origin_id        = "nlb-frontend-origin"
     viewer_protocol_policy  = "redirect-to-https"
     allowed_methods         = ["GET", "HEAD", "OPTIONS"]
     cached_methods          = ["GET", "HEAD", "OPTIONS"]
     realtime_log_config_arn = aws_cloudfront_realtime_log_config.cf_realtime_config.arn
 
-    forwarded_values {
-      query_string = true
-      cookies {
-        forward = "none"
-      }
-    }
+    # Use a CachingDisabled cache policy and the AllViewer origin request policy
+    cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # CachingDisabled policy ID
+    origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3" # AllViewer policy ID
   }
 
   viewer_certificate {
@@ -113,5 +104,11 @@ resource "aws_cloudfront_distribution" "frontend_cf" {
 # Output the Cloudfront URL.
 output "cloudfront_url" {
   description = "The CloudFront Distribution URL"
-  value       = aws_cloudfront_distribution.frontend_cf.domain_name
+  value       = "https://${aws_cloudfront_distribution.frontend_cf.domain_name}"
+}
+
+# Output the Kubernetes NLB URL.
+output "k8s_nlb_url" {
+  description = "The external URL for the Network Load Balancer in the EKS Cluster"
+  value       = "http://${data.aws_lb.k8s_nlb.dns_name}:3003"
 }

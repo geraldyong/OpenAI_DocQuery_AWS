@@ -25,10 +25,6 @@ helm repo add eks https://aws.github.io/eks-charts
 helm repo add external-secrets https://charts.external-secrets.io
 helm repo update
 
-# Install resource for secrets.
-helm install external-secrets external-secrets/external-secrets \
-  -n external-secrets --create-namespace
-
 #kubectl apply -f albc-serviceaccount.yaml
 helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
   -n kube-system \
@@ -43,6 +39,10 @@ helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
   #--set enableEndpointSlices=true \
   #--set serviceAnnotations."meta\.helm\.sh/release-name"=aws-load-balancer-controller \
   #--set serviceAnnotations."meta\.helm\.sh/release-namespace"=kube-system
+
+# Install resource for secrets.
+helm install external-secrets external-secrets/external-secrets \
+  -n external-secrets --create-namespace
 
 echo "INFO: Creating Kubernetes resources"
 #kubectl apply -f namespace.yaml
@@ -68,4 +68,4 @@ kubectl get all -n ${NAMESPACE}
 
 # Optional: Port-forwarding to test.
 # kubectl port-forward svc/doc-backend 8003:8003 -n doc-query
-# kubectl port-forward svc/doc-frontend 3003:3003 -n doc-query
+# kubectl port-forward svc/doc-frontend-service 3003:3003 -n doc-query

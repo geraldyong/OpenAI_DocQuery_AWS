@@ -1,3 +1,7 @@
+[browser]
+serverAddress = "0.0.0.0"
+serverPort = 3003
+
 [theme]
 base="dark"
 primaryColor="#4bcdff"

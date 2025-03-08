@@ -18,9 +18,10 @@ REPO_NAME=doc-query
 # aws ecr create-repository --repository-name ${REPO_NAME}/frontend --region ${AWS_REGION} --profile ${AWS_PROFILE}
 
 # Build for cloud.
-echo "INFO: Building images for AWS"
-cd ../../backend
+echo "INFO: Building images for ECR for Backend"
+cd ../backend
 docker buildx build --builder linux -t ${TARGET_ECR}/${REPO_NAME}/backend:latest --push .
 cd ../frontend
+echo "INFO: Building images for ECR for Frontend"
 docker buildx build --builder linux -t ${TARGET_ECR}/${REPO_NAME}/frontend:latest --push .
-cd ../iac/ecr
+cd ../iac

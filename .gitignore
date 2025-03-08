@@ -16,5 +16,7 @@ iac/terraform.tfvars.gerald
 iac/terraform.tfstate*
 iac/.terraform*
 iac/archived
-iac/eks/archived
-iac/eks/backend-secret.yaml
+iac/.env
+iac/logs
+iac/kubernetes/archived
+iac/kubernetes/backend-secret.yaml

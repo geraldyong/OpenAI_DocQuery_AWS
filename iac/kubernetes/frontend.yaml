@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: doc-frontend
-        image: 905418180243.dkr.ecr.us-east-1.amazonaws.com/doc-query/frontend
+        image: 905418418143.dkr.ecr.us-east-1.amazonaws.com/doc-query/frontend
         ports:
         - containerPort: 3003
         env:
