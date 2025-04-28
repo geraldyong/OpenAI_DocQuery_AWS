@@ -36,6 +36,6 @@ fi
 echo "INFO: Building docker images and starting services"
 docker compose build
 docker compose down
-docker volume rm openai_docquery_data
+docker volume rm openai_docquery_aws_data
 docker compose up -d
 docker compose logs -f
