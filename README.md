@@ -72,7 +72,9 @@ REDIS_PORT=xxx
 
 Update the `docker-compose.yml` file to add in the environment variables to the doc-backend service:
 ```
+  doc_backend:
    environment:
+     VECTOR_DB: redis
      REDIS_HOST: xxx
      REDIS_PORT: xxx
 ```

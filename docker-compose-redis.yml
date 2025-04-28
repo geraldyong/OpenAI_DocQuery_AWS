@@ -19,6 +19,7 @@ services:
     depends_on:
       - doc_redis
     #environment:                      # For external REDIS.
+    #  VECTOR_DB: redis
     #  REDIS_HOST: xxxx
     #  REDIS_PORT: xxxx
     env_file:
