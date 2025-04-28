@@ -40,14 +40,39 @@ Note: This code uses ChatGPT APIs.
    ln -s docker-compose-weaviate.yml docker-compose.yml
    ```
 
-3. Build and start up the services.
+3. Create the backend/certs and frontend/certs folders.
+
+4. Build and start up the services.
    ```
    ./rebuild.sh 
    ```
 
-4. Check that the container is up.
+4. Check that the containers are up.
    ```
    docker compose ps -a
    ```
 
 To do limited customisation of the look of the UI, modify the [config.toml](frontend/.streamlit/config.toml) file.
+
+## Using External Redis
+
+If you wish to use an external Redis, you can make use of the REDIS_HOST and REDIS_PORT in the backend.
+
+This can be done in one of 2 ways:
+
+### Method 1
+
+Set up the environment variables in backend/.env:
+```
+REDIS_HOST=xxx
+REDIS_PORT=xxx
+```
+
+### Method 2
+
+Update the `docker-compose.yml` file to add in the environment variables:
+```
+   environment:
+     REDIS_HOST: xxx
+     REDIS_PORT: xxx
+```

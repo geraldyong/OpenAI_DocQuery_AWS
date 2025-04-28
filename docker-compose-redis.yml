@@ -18,6 +18,9 @@ services:
       - "8003:8003"
     depends_on:
       - doc_redis
+    #environment:                      # For external REDIS.
+    #  REDIS_HOST: xxxx
+    #  REDIS_PORT: xxxx
     env_file:
       - .env
 

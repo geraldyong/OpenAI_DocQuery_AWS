@@ -1,3 +1,7 @@
+# ---------------------
+# ECR for Docker Images
+# ---------------------
+
 # Create ECR Repository
 resource "aws_ecr_repository" "frontend" {
   name                 = "${var.k8s_namespace}/frontend"

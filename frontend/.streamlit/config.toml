@@ -1,6 +1,14 @@
 [browser]
-serverAddress = "0.0.0.0"
-serverPort = 3003
+#serverAddress = "0.0.0.0"
+#serverPort = 443
+gatherUsageStats = false
+
+[server]
+enableCORS = false
+enableXsrfProtection = false
+
+[global]
+developmentMode = false
 
 [theme]
 base="dark"

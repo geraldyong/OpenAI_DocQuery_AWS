@@ -1,6 +1,6 @@
-#############################
+# -------------------
 # S3 Buckets for Logs
-#############################
+# -------------------
 
 # Create the base bucket
 resource "aws_s3_bucket" "cf_logs" {
@@ -84,6 +84,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "cf_logs" {
     expiration {
       days = 3
     }
+
+    filter {}
   }
 }
 resource "aws_s3_bucket_lifecycle_configuration" "waf_logs" {
@@ -96,6 +98,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "waf_logs" {
     expiration {
       days = 3
     }
+
+    filter {}
   }
 }
 resource "aws_s3_bucket_lifecycle_configuration" "nlb_logs" {
@@ -108,13 +112,15 @@ resource "aws_s3_bucket_lifecycle_configuration" "nlb_logs" {
     expiration {
       days = 3
     }
+
+    filter {}
   }
 }
 
 
-#############################
+# -------------------------------------
 # Access Logs for Network Load Balancer
-#############################
+# -------------------------------------
 
 # Create a bucket policy that allows the NLB to write logs to s3.
 # The NLB access logs are delivered by AWS's log delivery service directly, not by the 
@@ -179,9 +185,10 @@ resource "aws_s3_bucket_policy" "nlb_logs_policy" {
 }
 
 
-#############################
+# -----------------------------
 # Kinesis Data Streams for Logs
-#############################
+# -----------------------------
+
 resource "aws_kinesis_stream" "cf_realtime_logs" {
   name             = "cf-realtime-logs-stream"
   shard_count      = 1
@@ -210,6 +217,7 @@ EOF
 resource "aws_iam_policy" "cf_realtime_logs_policy" {
   name        = "cf-realtime-logs-policy"
   description = "Allow CloudFront to put records into the Kinesis stream for real-time logging"
+
   policy = jsonencode({
     "Version" : "2012-10-17",
     "Statement" : [
@@ -234,7 +242,11 @@ resource "aws_iam_role_policy_attachment" "cf_realtime_logs_attach" {
 resource "aws_cloudfront_realtime_log_config" "cf_realtime_config" {
   name          = "cfRealtimeLogConfig"
   sampling_rate = 100 # sample 100% of requests; adjust as needed
-  fields        = ["timestamp", "c-ip", "cs-method", "cs-uri-stem", "sc-status"]
+    fields      = [
+    "timestamp", "c-ip", "cs-method", "cs-uri-stem", "sc-status", 
+    "sc-bytes", "cs-protocol", "x-edge-location", "x-edge-result-type", 
+    "x-edge-response-result-type", "x-edge-detailed-result-type"
+  ]
 
   endpoint {
     stream_type = "Kinesis"
@@ -300,7 +312,6 @@ resource "aws_kinesis_firehose_delivery_stream" "waf_firehose" {
   }
 }
 
-/*
 resource "aws_wafv2_web_acl_logging_configuration" "waf_logging" {
   provider = aws.us_east_1
   resource_arn = aws_wafv2_web_acl.frontend_acl.arn
@@ -308,4 +319,3 @@ resource "aws_wafv2_web_acl_logging_configuration" "waf_logging" {
     aws_kinesis_firehose_delivery_stream.waf_firehose.arn
   ]
 }
-*/

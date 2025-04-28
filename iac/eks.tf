@@ -1,20 +1,20 @@
-#############################
+# --------------------------
 # EKS Cluster and Node Group
-#############################
+# --------------------------
 
 # IAM Role for the EKS Cluster
 resource "aws_iam_role" "eks_cluster_role" {
   name               = "eks_cluster_role"
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": { "Service": "eks.amazonaws.com" },
-    "Action": "sts:AssumeRole"
-  }]
-}
-EOF
+  assume_role_policy = <<-EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Effect": "Allow",
+      "Principal": { "Service": "eks.amazonaws.com" },
+      "Action": "sts:AssumeRole"
+    }]
+  }
+  EOF
 }
 
 resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
@@ -25,16 +25,16 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
 # IAM Role for the EKS Node Group
 resource "aws_iam_role" "eks_node_role" {
   name               = "eks_node_role"
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": { "Service": "ec2.amazonaws.com" },
-    "Action": "sts:AssumeRole"
-  }]
-}
-EOF
+  assume_role_policy = <<-EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Effect": "Allow",
+      "Principal": { "Service": "ec2.amazonaws.com" },
+      "Action": "sts:AssumeRole"
+    }]
+  }
+  EOF
 }
 
 resource "aws_iam_role_policy_attachment" "eks_node_policy" {
@@ -123,27 +123,14 @@ resource "kubernetes_namespace" "doc_query" {
   metadata {
     name = var.k8s_namespace
 
-    # Optional: Add labels
     labels = {
       environment = "production"
       app         = var.k8s_namespace
     }
 
-    # Optional: Add annotations
     annotations = {
       "created-by" = "terraform"
     }
-  }
-
-
-  # Build the docker images.
-  provisioner "local-exec" {
-    command = "echo 'INFO: Building docker images for ECR' && cd ecr && ./ecr_login.sh && cd .."
-  }
-
-  # Set up Statefulsets.
-  provisioner "local-exec" {
-    command = "echo 'INFO: Setting up Kubernetes resources' && cd kubernetes && ./install.sh && cd .."
   }
 }
 
@@ -161,6 +148,28 @@ resource "kubernetes_service_account" "frontend_service" {
   }
 }
 
+# Security Group for Network Load Balancer
+resource "aws_security_group" "nlb_sg" {
+  name        = "nlb-security-group"
+  description = "Security group for NLB"
+  vpc_id      = aws_vpc.eks_vpc.id
+
+  ingress {
+    from_port   = 3003
+    to_port     = 3003
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  # Allow all IPs (or restrict to CloudFront IPs)
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Brings up the Network Load Balancer on Kubernetes.
 resource "kubernetes_service" "frontend" {
   depends_on = [
     kubernetes_namespace.doc_query
@@ -173,11 +182,12 @@ resource "kubernetes_service" "frontend" {
       "service.beta.kubernetes.io/aws-load-balancer-type"                        = "external"
       "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type"             = "ip"
       "service.beta.kubernetes.io/aws-load-balancer-scheme"                      = "internet-facing"
-      "service.beta.kubernetes.io/aws-load-balancer-target-group-attributes"     = "preserve_client_ip.enabled=true"
+      "service.beta.kubernetes.io/aws-load-balancer-target-group-attributes"     = "preserve_client_ip.enabled=false"
       "service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags"    = "Name=doc-frontend-nlb,ManagedBy=eks"
       "service.beta.kubernetes.io/aws-load-balancer-access-log-enabled"          = "true"
       "service.beta.kubernetes.io/aws-load-balancer-access-log-s3-bucket-name"   = aws_s3_bucket.nlb_logs.bucket
       "service.beta.kubernetes.io/aws-load-balancer-access-log-s3-bucket-prefix" = "nlb-logs"
+    #  "service.beta.kubernetes.io/aws-load-balancer-security-groups"             = aws_security_group.nlb_sg.id
     }
   }
 
@@ -204,10 +214,45 @@ data "aws_lb" "k8s_nlb" {
   depends_on = [kubernetes_service.frontend]
 }
 
+resource "null_resource" "build_images" {
+  depends_on = [
+    aws_ecr_repository.frontend,
+    aws_ecr_repository.backend,
+    aws_eks_cluster.eks_cluster
+  ]
 
-#############################
+  # Build the docker images and install the apps.
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo 'INFO: Building docker images for ECR'
+      ./ecr_login.sh
+      cd kubernetes
+      ./install.sh
+      cd ..
+      EOT
+  }  
+}
+
+resource "null_resource" "update_cf_host" {
+  depends_on = [
+    aws_cloudfront_distribution.frontend_cf
+  ]
+
+  # Set up Statefulsets.
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo 'INFO: Updating Configmaps'
+      cd kubernetes
+      ./k8s_upd_cfhosts.sh
+      cd ..
+      EOT
+  }
+}
+
+
+# ----
 # OIDC
-#############################
+# ----
 # Get the OIDC thumbprint
 data "tls_certificate" "eks" {
   url = aws_eks_cluster.eks_cluster.identity[0].oidc[0].issuer

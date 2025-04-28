@@ -1,6 +1,7 @@
-# --------------------------------------
+# -----------------------------------
 # AWS Secrets Manager for OpenAI Keys
-# --------------------------------------
+# -----------------------------------
+
 resource "aws_secretsmanager_secret" "openai_keys" {
   name        = "doc_query_openai_keys"
   description = "OpenAI API keys for doc_query backend"
@@ -59,9 +60,9 @@ resource "aws_iam_role_policy_attachment" "frontend_secrets" {
   role       = aws_iam_role.frontend_role.name
 }
 
-#############################
+# -------------------------------------------------------------
 # AWS Systems Manager Parameter Store for Environment Variables
-#############################
+# -------------------------------------------------------------
 
 resource "aws_ssm_parameter" "backend_vector_db" {
   name        = "/doc_query/backend/VECTOR_DB"
@@ -112,6 +113,28 @@ resource "aws_ssm_parameter" "frontend_backend_port" {
   description = "Backend port for frontend"
   type        = "String"
   value       = "8003"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "cloudfront_host" {
+  name        = "/doc_query/frontend/CLOUDFRONT_HOST"
+  description = "Frontend host for Cloudfront"
+  type        = "String"
+  value       = aws_cloudfront_distribution.frontend_cf.domain_name
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "cloudfront_port" {
+  name        = "/doc_query/frontend/CLOUDFRONT_PORT"
+  description = "Frontend port for Cloudfront"
+  type        = "String"
+  value       = "443"
 
   lifecycle {
     ignore_changes = [value]

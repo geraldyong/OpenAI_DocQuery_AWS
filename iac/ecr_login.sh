@@ -1,8 +1,8 @@
 #!/bin/bash
 
-AWS_PROFILE=`cat ../terraform.tfvars | egrep "^aws_profile" | cut -f2 -d'"'`
-AWS_ACCOUNT=`cat ../terraform.tfvars | egrep "^account_id" | cut -f2 -d'"'`
-AWS_REGION=`cat ../terraform.tfvars | egrep "^aws_region" | cut -f2 -d'"'`
+AWS_PROFILE=`cat terraform.tfvars | egrep "^aws_profile" | cut -f2 -d'"'`
+AWS_ACCOUNT=`cat terraform.tfvars | egrep "^account_id" | cut -f2 -d'"'`
+AWS_REGION=`cat terraform.tfvars | egrep "^aws_region" | cut -f2 -d'"'`
 TARGET_ECR=${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com
 REPO_NAME=doc-query
 

@@ -15,10 +15,45 @@ spec:
     spec:
       containers:
       - name: doc-frontend
-        image: 905418418143.dkr.ecr.us-east-1.amazonaws.com/doc-query/frontend
+        image: 851725180020.dkr.ecr.us-east-1.amazonaws.com/doc-query/frontend
         ports:
         - containerPort: 3003
         env:
+        - name: STREAMLIT_BROWSER_SERVER_ADDRESS
+          valueFrom:
+            configMapKeyRef:
+              name: frontend-config
+              key: STREAMLIT_BROWSER_SERVER_ADDRESS
+        - name: STREAMLIT_BROWSER_SERVER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: frontend-config
+              key: STREAMLIT_BROWSER_SERVER_PORT
+        - name: STREAMLIT_SERVER_ENABLE_CORS
+          valueFrom:
+            configMapKeyRef:
+              name: frontend-config
+              key: STREAMLIT_SERVER_ENABLE_CORS
+        - name: STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION
+          valueFrom:
+            configMapKeyRef:
+              name: frontend-config
+              key: STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION
+        - name: STREAMLIT_SERVER_HEADLESS
+          valueFrom:
+            configMapKeyRef:
+              name: frontend-config
+              key: STREAMLIT_SERVER_HEADLESS
+        - name: STREAMLIT_SERVER_BASE_URL_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: frontend-config
+              key: STREAMLIT_SERVER_BASE_URL_PATH
+        - name: STREAMLIT_LOGGER_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: frontend-config
+              key: STREAMLIT_LOGGER_LEVEL
         - name: BACKEND_HOST
           valueFrom:
             configMapKeyRef:

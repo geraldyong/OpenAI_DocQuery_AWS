@@ -12,13 +12,22 @@ if [ `uname` = "Darwin" ]; then
   # MacBook users need an additional parameter for sed.
   sed -i '' "s/image: [0-9]*.*\.com/image: $TARGET_ECR/g" backend.yaml
   sed -i '' "s/image: [0-9]*.*\.com/image: $TARGET_ECR/g" frontend.yaml
-  sed -i '' "s/iam::[0-9]*:/iam::${AWS_ACCOUNT}:/g" albc-serviceaccount.yaml
+  #sed -i '' "s/iam::[0-9]*:/iam::${AWS_ACCOUNT}:/g" albc-serviceaccount.yaml
 else
   sed -i "s/image: [0-9]*.*\.com/image: $TARGET_ECR/g" backend.yaml
   sed -i "s/image: [0-9]*.*\.com/image: $TARGET_ECR/g" frontend.yaml
-  sed -i "s/iam::[0-9]*:/iam::${AWS_ACCOUNT}:/g" albc-serviceaccount.yaml
+  #sed -i "s/iam::[0-9]*:/iam::${AWS_ACCOUNT}:/g" albc-serviceaccount.yaml
 fi
 
+# Update ServerHost for Streamlit to point to Cloudfront Distribution URL.
+CF_HOST=`aws cloudfront list-distributions --profile ${AWS_PROFILE} | grep DomainName | grep "cloudfront.net" | cut -f4 -d'"'`
+if [ `uname` = "Darwin" ]; then
+  # MacBook users need an additional parameter for sed.
+  sed -i '' "s/STREAMLIT_BROWSER_SERVER_ADDRESS: .*/STREAMLIT_BROWSER_SERVER_ADDRESS: \"${CF_HOST}\"/" frontend-configmap.yaml
+else
+  sed -i "s/STREAMLIT_BROWSER_SERVER_ADDRESS: .*/STREAMLIT_BROWSER_SERVER_ADDRESS: \"${CF_HOST}\"/" frontend-configmap.yaml
+fi
+ 
 # Add EKS Helm Charts
 echo "INFO: Updating EKS Helm Charts"
 helm repo add eks https://aws.github.io/eks-charts
@@ -59,7 +68,7 @@ kubectl apply -f frontend.yaml
 
 # Wait for the pods to be ready.
 echo "INFO: Checking resources"
-while [ `kubectl get pods -n ${NAMESPACE} | grep "Running" | wc -l | tr -d ' '` -eq 0 ]; do
+while [ `kubectl get pods -n ${NAMESPACE} | awk '{ print $3 }'| egrep -v "Running|STATUS" | wc -l | tr -d ' '` -gt 0 ]; do
   echo "Waiting for pods to come up..."
   sleep 10
 done

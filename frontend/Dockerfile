@@ -18,4 +18,4 @@ RUN pip install --no-cache-dir -r requirements.txt && \
 
 EXPOSE 3003
 
-CMD ["sh", "-c", "streamlit", "run", "doc-query_ui.py", "--server.port", "3003", "&&", "wait"]
+CMD ["streamlit", "run", "doc-query_ui.py", "--server.port", "3003", "&&", "wait"]

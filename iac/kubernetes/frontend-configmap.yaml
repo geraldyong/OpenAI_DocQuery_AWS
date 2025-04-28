@@ -4,5 +4,12 @@ metadata:
   name: frontend-config
   namespace: doc-query
 data:
+  STREAMLIT_BROWSER_SERVER_ADDRESS: "d1e136xzvigtx4.cloudfront.net"
+  STREAMLIT_BROWSER_SERVER_PORT: "443"
+  STREAMLIT_LOGGER_LEVEL: "debug"
+  STREAMLIT_SERVER_BASE_URL_PATH: ""
+  STREAMLIT_SERVER_HEADLESS: "true"
+  STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION: "false"
+  STREAMLIT_SERVER_ENABLE_CORS: "false"
   BACKEND_HOST: "doc-backend.doc-query.svc.cluster.local"
   BACKEND_PORT: "8003"

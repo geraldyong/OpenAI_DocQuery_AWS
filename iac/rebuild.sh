@@ -28,6 +28,7 @@ setup() {
   echo "-------------------------------------"
   terraform init
   terraform plan
+  terraform test
   terraform apply -auto-approve
 }
 
